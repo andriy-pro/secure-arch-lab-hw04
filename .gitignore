@@ -1,0 +1,21 @@
+# Локальні залежності та кеші
+.venv/
+venv/
+node_modules/
+__pycache__/
+.pytest_cache/
+
+# Лабораторні копії великих зовнішніх проєктів
+lab/
+juice-shop/
+juice-shop-hw04-lab/
+
+# Локальний шум ОС та редакторів
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Generated PDF render previews
+deliverables/pdf-render/
