@@ -17,5 +17,6 @@ juice-shop-hw04-lab/
 .vscode/
 .idea/
 
-# Generated PDF render previews
-deliverables/pdf-render/
+# Generated submission artifacts
+report.pdf
+deliverables/

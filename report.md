@@ -4,22 +4,33 @@
 
 DAST-перевірка виконувалася за допомогою OWASP ZAP Desktop. Сканування було локальним: Juice Shop працював у Docker/WSL, а OWASP ZAP Desktop — у Windows, тому для DAST використовувалась WSL-адреса сервісу `http://172.27.224.80:3000/`.
 
-Матеріали для перевірки результатів:
+Окремо збережені результати:
 
-- HTML-звіт ZAP: [evidence/tool-runs/zap_results.html](evidence/tool-runs/zap_results.html);
-- зведення виявлень ZAP для цільового сервісу: [evidence/tool-runs/zap-alerts-summary.md](evidence/tool-runs/zap-alerts-summary.md);
-- скриншоти запуску й результатів: [01-juice-shop-running.png](evidence/screenshots/01-juice-shop-running.png), [02-zap-scan-running.png](evidence/screenshots/02-zap-scan-running.png), [03-zap-alert-summary.png](evidence/screenshots/03-zap-alert-summary.png), [04-zap-selected-finding.png](evidence/screenshots/04-zap-selected-finding.png).
+- HTML-звіт ZAP: [evidence/tool-runs/zap_results.html](https://github.com/andriy-pro/secure-arch-lab-hw04/blob/master/evidence/tool-runs/zap_results.html);
+- зведення виявлень ZAP для цільового сервісу: [evidence/tool-runs/zap-alerts-summary.md](https://github.com/andriy-pro/secure-arch-lab-hw04/blob/master/evidence/tool-runs/zap-alerts-summary.md);
+- скриншоти запуску й результатів: [01-juice-shop-running.png](https://github.com/andriy-pro/secure-arch-lab-hw04/blob/master/evidence/screenshots/01-juice-shop-running.png), [02-zap-scan-running.png](https://github.com/andriy-pro/secure-arch-lab-hw04/blob/master/evidence/screenshots/02-zap-scan-running.png), [03-zap-alert-summary.png](https://github.com/andriy-pro/secure-arch-lab-hw04/blob/master/evidence/screenshots/03-zap-alert-summary.png), [04-zap-selected-finding.png](https://github.com/andriy-pro/secure-arch-lab-hw04/blob/master/evidence/screenshots/04-zap-selected-finding.png).
 
 Для аналізу взято виявлення, що стосуються локального екземпляра Juice Shop за адресою `http://172.27.224.80:3000/`.
 
-| № | Результат OWASP ZAP | Ризик / достовірність (Risk / Confidence) | Приклад URL | Коментар |
-|---|---|---|---|---|
-| 1 | SQL Injection | High / Low | `GET /rest/products/search?q=%27%28` | ZAP отримав `500 Internal Server Error` на ін'єкційний пошуковий запит. Для бізнесу це ризик витоку або зміни даних каталогу, а для команди розробки — пріоритетне виправлення, бо проблема зачіпає серверну логіку, а не лише заголовки відповіді. |
-| 2 | Content Security Policy Header Not Set | Medium / High | `GET /` | Відсутній CSP-заголовок. Для SPA це важливо, бо CSP зменшує наслідки XSS та помилок у роботі з HTML/JavaScript; без нього навіть одна XSS-помилка може легше перетворитися на викрадення токенів або підміну дій користувача. |
-| 3 | Cross-Domain Misconfiguration | Medium / Medium | `GET /chunk-24EZLZ4I.js` | ZAP виявив потенційно небезпечну міждоменну поведінку (cross-origin) на ресурсах застосунку. Вплив залежить від конкретної CORS-конфігурації: надто широкі правила можуть відкрити доступ до API з небажаних доменів. |
-| 4 | Session ID in URL Rewrite | Medium / High | `GET /socket.io/?...&sid=oCSgl27LzFT4KybHAAAC` | Ідентифікатор сесії потрапляє в URL. Такі значення можуть залишатися в логах, історії браузера або referrer-заголовках, тому інцидент може початися не з атаки на код, а з витоку технічних журналів. |
-| 5 | Missing Anti-clickjacking Header | Medium / Medium | `POST /socket.io/?...&sid=oCSgl27LzFT4KybHAAAC` | Відсутність `X-Frame-Options` або відповідної CSP-директиви може дозволити відкривати сторінку у frame та створювати clickjacking-сценарії. Бізнес-ризик тут нижчий, ніж у SQL Injection, але він важливий для сторінок з діями користувача. |
-| 6 | X-Content-Type-Options Header Missing | Low / Medium | `GET /socket.io/?EIO=4&transport=polling...` | Відсутній `X-Content-Type-Options: nosniff`. Це не найкритичніша проблема, але вона показує нестачу базового hardening; такі дрібні налаштування краще закривати разом із CSP/clickjacking-захистом. |
+### Ключові результати DAST
+
+1. **SQL Injection** (`High / Low`)
+   Приклад: `GET /rest/products/search?q=%27%28`. ZAP отримав `500 Internal Server Error` на ін'єкційний пошуковий запит. Для бізнесу це ризик витоку або зміни даних каталогу, а для команди розробки — пріоритетне виправлення, бо проблема зачіпає серверну логіку, а не лише заголовки відповіді.
+
+2. **Content Security Policy Header Not Set** (`Medium / High`)
+   Приклад: `GET /`. Відсутній CSP-заголовок. Для SPA це важливо, бо CSP зменшує наслідки XSS та помилок у роботі з HTML/JavaScript; без нього навіть одна XSS-помилка може легше перетворитися на викрадення токенів або підміну дій користувача.
+
+3. **Cross-Domain Misconfiguration** (`Medium / Medium`)
+   Приклад: `GET /chunk-24EZLZ4I.js`. ZAP виявив потенційно небезпечну міждоменну поведінку (cross-origin) на ресурсах застосунку. Вплив залежить від конкретної CORS-конфігурації: надто широкі правила можуть відкрити доступ до API з небажаних доменів.
+
+4. **Session ID in URL Rewrite** (`Medium / High`)
+   Приклад: `GET /socket.io/?...&sid=oCSgl27LzFT4KybHAAAC`. Ідентифікатор сесії потрапляє в URL. Такі значення можуть залишатися в логах, історії браузера або referrer-заголовках, тому інцидент може початися не з атаки на код, а з витоку технічних журналів.
+
+5. **Missing Anti-clickjacking Header** (`Medium / Medium`)
+   Приклад: `POST /socket.io/?...&sid=oCSgl27LzFT4KybHAAAC`. Відсутність `X-Frame-Options` або відповідної CSP-директиви може дозволити відкривати сторінку у frame та створювати clickjacking-сценарії. Бізнес-ризик тут нижчий, ніж у SQL Injection, але він важливий для сторінок з діями користувача.
+
+6. **X-Content-Type-Options Header Missing** (`Low / Medium`)
+   Приклад: `GET /socket.io/?EIO=4&transport=polling...`. Відсутній `X-Content-Type-Options: nosniff`. Це не найкритичніша проблема, але вона показує нестачу базового hardening; такі дрібні налаштування краще закривати разом із CSP/clickjacking-захистом.
 
 Головна користь DAST у цій лабораторній роботі — перевірка застосунку як “чорної скриньки”: ZAP бачить реальні відповіді, заголовки, URL, статуси та поведінку API/SPA після запуску. Це особливо корисно для пошуку помилок конфігурації, проблем із заголовками безпеки (security headers), поведінки під час виконання та перевірки того, що вразливість справді проявляється через HTTP.
 
@@ -27,20 +38,27 @@ DAST-перевірка виконувалася за допомогою OWASP Z
 
 SAST-перевірка виконувалася Semgrep по локальному коду Juice Shop. Semgrep запускався в Docker-контейнері `semgrep/semgrep:latest`.
 
-Матеріали для перевірки результатів:
+Окремо збережені результати:
 
-- JSON-звіт Semgrep: [reports/results_semgrep.json](reports/results_semgrep.json);
-- TSV-вибірка результатів: [evidence/tool-runs/semgrep-findings.tsv](evidence/tool-runs/semgrep-findings.tsv);
-- скриншот завершення команди: [05-semgrep-command-finished.png](evidence/screenshots/05-semgrep-command-finished.png).
+- JSON-звіт Semgrep: [reports/results_semgrep.json](https://github.com/andriy-pro/secure-arch-lab-hw04/blob/master/reports/results_semgrep.json);
+- TSV-вибірка результатів: [evidence/tool-runs/semgrep-findings.tsv](https://github.com/andriy-pro/secure-arch-lab-hw04/blob/master/evidence/tool-runs/semgrep-findings.tsv);
+- скриншот завершення команди: [05-semgrep-command-finished.png](https://github.com/andriy-pro/secure-arch-lab-hw04/blob/master/evidence/screenshots/05-semgrep-command-finished.png).
 
 Semgrep знайшов 23 результати. Нижче подані чотири різні за типом приклади, які добре показують сильні сторони SAST.
 
-| № | Результат Semgrep | Файл / місце | Чому це важливо |
-|---|---|---|---|
-| 1 | SQL-ін'єкція (SQL injection) у Sequelize | `src/routes/search.ts:23`, також `src/routes/login.ts:34` | Дані з HTTP-запиту потрапляють у SQL/ORM-запит. На відміну від DAST, SAST показує місце в коді, де треба перейти на параметризовані запити або безпечний query builder. |
-| 2 | Жорстко прописаний JWT-секрет (hardcoded JWT secret) | `src/lib/insecurity.ts:56` | Секрет для JWT зберігається в коді. У реальному SSDLC такі значення мають бути в сховищі секретів або змінних середовища, а не в репозиторії. |
-| 3 | Обхід шляхів (path traversal) через `res.sendFile` | `src/routes/fileServer.ts:33`, також `src/routes/keyServer.ts:14`, `src/routes/logfileServer.ts:14`, `src/routes/quarantineServer.ts:14` | Користувацький ввід впливає на шлях до файлу. Це може дозволити читання неочікуваних файлів, якщо шлях не нормалізується і не обмежується дозволеною директорією. |
-| 4 | Необроблений HTML (raw HTML) / можливий XSS | `src/routes/chatbot.ts:205` | Дані потрапляють у HTML, який формується вручну. Для такого коду потрібне екранування, санітизація або безпечна генерація HTML. |
+### Приклади результатів Semgrep
+
+1. **SQL-ін'єкція (SQL injection) у Sequelize**
+   Місце: `src/routes/search.ts:23`, також `src/routes/login.ts:34`. Дані з HTTP-запиту потрапляють у SQL/ORM-запит. На відміну від DAST, SAST показує місце в коді, де треба перейти на параметризовані запити або безпечний query builder.
+
+2. **Жорстко прописаний JWT-секрет (hardcoded JWT secret)**
+   Місце: `src/lib/insecurity.ts:56`. Секрет для JWT зберігається в коді. У реальному SSDLC такі значення мають бути в сховищі секретів або змінних середовища, а не в репозиторії.
+
+3. **Обхід шляхів (path traversal) через `res.sendFile`**
+   Місце: `src/routes/fileServer.ts:33`, також `src/routes/keyServer.ts:14`, `src/routes/logfileServer.ts:14`, `src/routes/quarantineServer.ts:14`. Користувацький ввід впливає на шлях до файлу. Це може дозволити читання неочікуваних файлів, якщо шлях не нормалізується і не обмежується дозволеною директорією.
+
+4. **Необроблений HTML (raw HTML) / можливий XSS**
+   Місце: `src/routes/chatbot.ts:205`. Дані потрапляють у HTML, який формується вручну. Для такого коду потрібне екранування, санітизація або безпечна генерація HTML.
 
 SAST корисний до запуску застосунку: його можна виконувати на PR, у CI або локально перед злиттям змін. Він показує конкретні рядки коду, тому добре підходить для швидкого виправлення дефектів на ранніх етапах SSDLC.
 
@@ -60,14 +78,23 @@ SAST корисний до запуску застосунку: його мож�
 
 ## 4. Таблиця вразливостей Juice Shop і SSDLC
 
-| № | Вразливість / ризик | Метод | Інструмент | Етап SSDLC | Що робити |
-|---|---|---|---|---|---|
-| 1 | SQL Injection у пошуку товарів | SAST + DAST | Semgrep, OWASP ZAP | Розробка, CI, передрелізне середовище | Використати параметризовані запити, додати unit/integration тести на ін'єкційні рядки, запускати SAST у PR і DAST перед релізом. |
-| 2 | Жорстко прописаний JWT-секрет | SAST | Semgrep | Commit, CI, релізний контрольний гейт | Прибрати секрет із коду, зберігати його в сховищі секретів або змінних середовища, додати перевірку секретів у CI. |
-| 3 | Обхід шляхів у файлових маршрутах | SAST | Semgrep | Розробка, перевірка коду, CI | Канонізувати шлях, перевіряти allowlist директорій, заборонити `..` та небезпечні сегменти, додати негативні тести. |
-| 4 | Необроблений HTML / можливий XSS у chatbot route | SAST, додатково DAST/IAST | Semgrep, OWASP ZAP | Розробка, інтеграційне тестування | Екранувати користувацькі дані, використовувати безпечні шаблони або санітизацію HTML. |
-| 5 | Відсутні CSP / anti-clickjacking / посилення Content-Type | DAST | OWASP ZAP | Передрелізне середовище, перевірка перед релізом | Додати CSP, `X-Frame-Options` або `frame-ancestors`, `X-Content-Type-Options: nosniff`, перевіряти заголовки після деплою. |
-| 6 | Session ID in URL Rewrite | DAST | OWASP ZAP | Інтеграційне тестування, передрелізне середовище | Не передавати session ID через URL, використовувати cookie з `HttpOnly`, `Secure`, `SameSite`, зменшити витік через логи та referrer. |
+| № | Вразливість / ризик | Метод | Інструмент | Етап SSDLC |
+|---|---|---|---|---|
+| 1 | SQL Injection у пошуку товарів | SAST + DAST | Semgrep, OWASP ZAP | Розробка, CI, передрелізне середовище |
+| 2 | Жорстко прописаний JWT-секрет | SAST | Semgrep | Commit, CI, релізний контрольний гейт |
+| 3 | Обхід шляхів у файлових маршрутах | SAST | Semgrep | Розробка, перевірка коду, CI |
+| 4 | Необроблений HTML / можливий XSS у chatbot route | SAST, додатково DAST/IAST | Semgrep, OWASP ZAP | Розробка, інтеграційне тестування |
+| 5 | Відсутні CSP / anti-clickjacking / посилення Content-Type | DAST | OWASP ZAP | Передрелізне середовище, перевірка перед релізом |
+| 6 | Session ID in URL Rewrite | DAST | OWASP ZAP | Інтеграційне тестування, передрелізне середовище |
+
+### Рекомендовані дії для SSDLC
+
+1. **SQL Injection у пошуку товарів.** Використати параметризовані запити, додати unit/integration тести на ін'єкційні рядки, запускати SAST у PR і DAST перед релізом.
+2. **Жорстко прописаний JWT-секрет.** Прибрати секрет із коду, зберігати його в сховищі секретів або змінних середовища, додати перевірку секретів у CI.
+3. **Обхід шляхів у файлових маршрутах.** Канонізувати шлях, перевіряти allowlist директорій, заборонити `..` та небезпечні сегменти, додати негативні тести.
+4. **Необроблений HTML / можливий XSS у chatbot route.** Екранувати користувацькі дані, використовувати безпечні шаблони або санітизацію HTML.
+5. **Відсутні CSP / anti-clickjacking / посилення Content-Type.** Додати CSP, `X-Frame-Options` або `frame-ancestors`, `X-Content-Type-Options: nosniff`, перевіряти заголовки після деплою.
+6. **Session ID in URL Rewrite.** Не передавати session ID через URL, використовувати cookie з `HttpOnly`, `Secure`, `SameSite`, зменшити витік через логи та referrer.
 
 Найкращий результат дає не один інструмент, а комбінація контрольних гейтів: SAST рано знаходить дефекти в коді, DAST перевіряє реальний деплой, а ручна перевірка допомагає оцінити бізнес-контекст і пріоритет виправлення.
 
@@ -104,6 +131,28 @@ RASP більше підходить для захисту критичних с
 | SPA / вебзастосунок | SAST, DAST, ручна перевірка заголовків безпеки | SAST перевіряє TypeScript/JavaScript, серверні маршрути і CI-конфігурацію; DAST перевіряє заголовки у відповідях запущеного застосунку, CORS/CSP, XSS-поведінку, роботу з сесіями; перед релізом корисно мати окремий контрольний список безпеки для браузерних ризиків. |
 
 Для REST API головний акцент — валідація вхідних даних, авторизація, SQL/NoSQL injection, помилки доступу до ресурсів і безпечна робота з секретами. Для SPA важливі XSS, CSP, CORS, clickjacking, ризики залежностей і коректна робота з токенами. В обох випадках SAST краще ставити ближче до розробника, а DAST — ближче до реального середовища.
+
+## Додаток: скриншоти виконання
+
+[![Juice Shop running](evidence/screenshots/01-juice-shop-running.png)](https://github.com/andriy-pro/secure-arch-lab-hw04/blob/master/evidence/screenshots/01-juice-shop-running.png)
+
+Скриншот 1. Локальний OWASP Juice Shop запущений у Docker/WSL.
+
+[![ZAP scan running](evidence/screenshots/02-zap-scan-running.png)](https://github.com/andriy-pro/secure-arch-lab-hw04/blob/master/evidence/screenshots/02-zap-scan-running.png)
+
+Скриншот 2. OWASP ZAP Desktop виконує DAST-перевірку локального сервісу.
+
+[![ZAP alert summary](evidence/screenshots/03-zap-alert-summary.png)](https://github.com/andriy-pro/secure-arch-lab-hw04/blob/master/evidence/screenshots/03-zap-alert-summary.png)
+
+Скриншот 3. Панель виявлень OWASP ZAP після сканування.
+
+[![ZAP selected finding](evidence/screenshots/04-zap-selected-finding.png)](https://github.com/andriy-pro/secure-arch-lab-hw04/blob/master/evidence/screenshots/04-zap-selected-finding.png)
+
+Скриншот 4. Приклад окремого виявлення OWASP ZAP.
+
+[![Semgrep command finished](evidence/screenshots/05-semgrep-command-finished.png)](https://github.com/andriy-pro/secure-arch-lab-hw04/blob/master/evidence/screenshots/05-semgrep-command-finished.png)
+
+Скриншот 5. Завершення запуску Semgrep і збереження результатів.
 
 ## 7. Висновок
 
